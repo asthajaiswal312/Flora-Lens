@@ -1,0 +1,20 @@
+.venv/
+.arena/
+__pycache__/
+*.pyc
+.DS_Store
+Thumbs.db
+
+# Runtime observations stay local.
+data/bloomwatch.db
+data/uploads/*.jpg
+
+# Large trained weights are distributed separately (Release/LFS), not ordinary Git.
+model/*.pth
+model/*.pt
+model/*.h5
+model/*.hdf5
+model/*.keras
+
+# Local secrets and environment overrides.
+.env

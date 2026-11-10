@@ -1,0 +1,4 @@
+{
+  "preprocessing": "resnet50",
+  "output": "auto"
+}
