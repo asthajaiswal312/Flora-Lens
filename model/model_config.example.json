@@ -1,0 +1,5 @@
+{
+  "input_size": [224, 224],
+  "preprocessing": "resnet50",
+  "output": "auto"
+}
