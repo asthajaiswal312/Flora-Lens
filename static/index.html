@@ -1,0 +1,204 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#173f35">
+  <title>BloomWatch · Flower sightings for biodiversity monitoring</title>
+  <link rel="stylesheet" href="/static/vendor/leaflet.css">
+  <link rel="stylesheet" href="/static/styles.css">
+  <script defer src="/static/vendor/leaflet.js"></script>
+  <script defer src="/static/app.js"></script>
+</head>
+<body>
+  <header class="site-header">
+    <a class="brand" href="#" aria-label="BloomWatch home">
+      <span class="brand-mark" aria-hidden="true">
+        <svg viewBox="0 0 40 40" fill="none"><path d="M20 18C8 16 8 5 9 4c7-1 13 4 13 11M21 17C22 5 33 5 34 6c2 7-3 13-11 14M19 20C7 22 9 33 10 34c7 1 12-4 12-12M22 20c2 12 13 10 14 9 1-7-4-12-12-12" fill="currentColor" opacity=".9"/><circle cx="21" cy="19" r="5" fill="#f3c969"/></svg>
+      </span>
+      <span><strong>BloomWatch</strong><small>Ecological sighting network</small></span>
+    </a>
+    <nav class="main-nav" aria-label="Main navigation">
+      <button class="nav-button active" data-view="collect" type="button">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3v18M3 12h18"/><circle cx="12" cy="12" r="8"/></svg>
+        Field collection
+      </button>
+      <button class="nav-button" data-view="dashboard" type="button">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 19V9m6 10V5m6 14v-7m4 7H2"/></svg>
+        Dashboard
+      </button>
+    </nav>
+    <button id="model-status-button" class="status-chip preview" type="button" title="Model connection and setup">
+      <span class="status-dot"></span><span id="model-status-short">Checking model</span>
+    </button>
+  </header>
+
+  <main>
+    <section id="collect-view" class="app-view">
+      <div class="page-heading">
+        <div>
+          <p class="eyebrow">FROM PHOTO TO ECOLOGICAL RECORD</p>
+          <h1>Every flower sighting<br>can become <em>useful data.</em></h1>
+          <p class="heading-copy">A human-verified, geo-tagged observation system powered by a 105-class ResNet50 classifier, including out-of-distribution rejection.</p>
+        </div>
+        <div class="heading-note">
+          <span class="note-number">01</span>
+          <p><strong>Presence, not assumptions.</strong><br>BloomWatch maps recorded sightings. It does not treat photo counts as population estimates.</p>
+        </div>
+      </div>
+
+      <div id="model-banner" class="model-banner preview" role="status">
+        <div class="banner-icon" aria-hidden="true">i</div>
+        <div><strong id="model-banner-title">Checking model connection…</strong><p id="model-banner-text"></p></div>
+        <button id="open-setup" type="button" class="text-button">Setup guide <span>↗</span></button>
+      </div>
+
+      <form id="sighting-form">
+        <div class="collector-grid">
+          <section class="panel photo-panel">
+            <div class="panel-heading">
+              <span class="step">STEP 1</span>
+              <div><h2>Add a flower photograph</h2><p>Use one visible, reasonably centred flower.</p></div>
+            </div>
+            <input id="file-input" type="file" accept="image/jpeg,image/png,image/webp" hidden>
+            <label id="drop-zone" class="drop-zone" for="file-input">
+              <span id="upload-empty" class="upload-empty">
+                <span class="upload-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 7h3l1.5-2h7L17 7h3v12H4z"/><circle cx="12" cy="13" r="4"/></svg></span>
+                <strong>Drop a field photo here</strong>
+                <span>or <u>browse your device</u></span>
+                <small>JPG, PNG or WebP · up to 10 MB</small>
+              </span>
+              <img id="photo-preview" alt="Selected flower" hidden>
+              <span id="photo-overlay" class="photo-overlay" hidden>Click to replace photo</span>
+            </label>
+            <div class="photo-tips"><span>✓ Fill the frame</span><span>✓ Avoid heavy blur</span><span>✓ Include petals</span></div>
+            <button id="identify-button" class="primary-button full-width" type="button" disabled>
+              <span>Identify flower</span><span aria-hidden="true">→</span>
+            </button>
+          </section>
+
+          <section class="panel review-panel">
+            <div class="panel-heading">
+              <span class="step">STEP 2</span>
+              <div><h2>Review identification</h2><p>Confirm a suggestion; never force an uncertain match.</p></div>
+            </div>
+            <div id="prediction-empty" class="empty-state">
+              <div class="empty-flower" aria-hidden="true">✣</div>
+              <strong>Your top 3 predictions will appear here</strong>
+              <p>Upload a photo and run identification to begin.</p>
+            </div>
+            <div id="prediction-content" hidden>
+              <div id="demo-notice" class="inline-alert sample" hidden></div>
+              <div class="primary-result">
+                <div><span class="result-label">TOP SUGGESTION</span><h3 id="top-species">—</h3></div>
+                <div class="score-ring"><strong id="top-score">—</strong><span>model score</span></div>
+              </div>
+              <div id="review-alert" class="inline-alert warning" hidden><strong>Review recommended.</strong> The top score is below the configured review threshold.</div>
+              <div id="prediction-list" class="prediction-list"></div>
+              <label class="field-label" for="confirmed-species">Confirmed label for this sighting</label>
+              <select id="confirmed-species"></select>
+              <p class="field-help">Choosing “Unknown” sends the record for expert review instead of inventing a species.</p>
+            </div>
+          </section>
+
+          <section class="panel details-panel">
+            <div class="panel-heading">
+              <span class="step">STEP 3</span>
+              <div><h2>Log the field observation</h2><p>Attach place, time, and useful context.</p></div>
+            </div>
+            <div class="field-group">
+              <span class="field-label">GPS coordinates</span>
+              <button id="location-button" class="secondary-button full-width" type="button">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 21s7-5.1 7-12a7 7 0 10-14 0c0 6.9 7 12 7 12z"/><circle cx="12" cy="9" r="2.5"/></svg>
+                Use my current location
+              </button>
+              <p id="location-feedback" class="field-help">Location permission is requested only when you press the button.</p>
+              <div class="coordinate-row">
+                <label><span>Latitude</span><input id="latitude" type="number" min="-90" max="90" step="any" placeholder="26.846700" required></label>
+                <label><span>Longitude</span><input id="longitude" type="number" min="-180" max="180" step="any" placeholder="80.946200" required></label>
+              </div>
+            </div>
+            <div class="field-group two-column">
+              <label><span class="field-label">Observed at</span><input id="observed-at" type="datetime-local" required></label>
+              <label><span class="field-label">Observer <small>optional</small></span><input id="observer" type="text" maxlength="100" placeholder="Name or team"></label>
+            </div>
+            <label class="field-group"><span class="field-label">Field notes <small>optional</small></span><textarea id="notes" rows="3" maxlength="1200" placeholder="Habitat, approximate number of plants, weather, or identification notes…"></textarea></label>
+            <div class="pending-note"><span aria-hidden="true">✓</span><p>New sightings are saved as <strong>pending verification</strong>. An expert can verify them from the dashboard.</p></div>
+            <button id="save-button" class="primary-button full-width" type="submit" disabled>Save geo-tagged sighting <span>→</span></button>
+          </section>
+        </div>
+      </form>
+
+      <section class="impact-strip" aria-label="Project principles">
+        <div><span>01</span><p><strong>Assisted identification</strong><br>Top-3 suggestions, not unexplained answers.</p></div>
+        <div><span>02</span><p><strong>Human in the loop</strong><br>Uncertainty and expert review stay visible.</p></div>
+        <div><span>03</span><p><strong>Spatial context</strong><br>Each record becomes a filterable map point.</p></div>
+      </section>
+    </section>
+
+    <section id="dashboard-view" class="app-view" hidden>
+      <div class="dashboard-heading">
+        <div><p class="eyebrow">CONSERVATION WORKSPACE</p><h1>Sighting dashboard</h1><p>Explore recorded presence, review submissions, and export observations.</p></div>
+        <div class="dashboard-actions"><a class="secondary-button" href="/api/sightings/export.csv" download>Export CSV</a><button id="new-sighting" class="primary-button" type="button">+ New sighting</button></div>
+      </div>
+
+      <div id="sample-dashboard-note" class="inline-alert sample" hidden><strong>Sample records are shown.</strong> They demonstrate the dashboard and are not ecological observations. <button id="clear-samples-inline" type="button" class="text-button">Clear sample records</button></div>
+
+      <div class="stats-grid">
+        <article class="stat-card"><span class="stat-icon">◉</span><div><strong id="stat-total">0</strong><span>Total records</span></div><small>All submitted sightings</small></article>
+        <article class="stat-card"><span class="stat-icon verified">✓</span><div><strong id="stat-verified">0</strong><span>Verified</span></div><small>Reviewed observations</small></article>
+        <article class="stat-card"><span class="stat-icon pending">◷</span><div><strong id="stat-pending">0</strong><span>Awaiting review</span></div><small>Human verification queue</small></article>
+        <article class="stat-card"><span class="stat-icon species">✣</span><div><strong id="stat-species">0</strong><span>Labels recorded</span></div><small>Distinct submitted labels</small></article>
+      </div>
+
+      <section class="filter-panel" aria-label="Sighting filters">
+        <label><span>Species / label</span><select id="species-filter"><option value="">All labels</option></select></label>
+        <label><span>Review status</span><select id="status-filter"><option value="">All statuses</option><option value="verified">Verified</option><option value="pending">Pending</option><option value="rejected">Rejected</option></select></label>
+        <label><span>From date</span><input id="from-date" type="date"></label>
+        <label><span>To date</span><input id="to-date" type="date"></label>
+        <button id="clear-filters" class="text-button" type="button">Reset filters</button>
+      </section>
+
+      <div class="map-layout">
+        <section class="panel map-panel">
+          <div class="section-heading"><div><h2>Recorded distribution</h2><p id="map-result-count">0 sightings</p></div><div class="map-legend"><span><i class="legend-dot verified"></i>Verified</span><span><i class="legend-dot pending"></i>Pending</span><span><i class="legend-dot rejected"></i>Rejected</span></div></div>
+          <div id="map" aria-label="Interactive map of flower sightings"></div>
+          <p id="map-notice" class="map-notice" hidden>Map tiles could not be loaded. Coordinates remain available in the records table.</p>
+        </section>
+        <aside class="panel species-panel">
+          <div class="section-heading"><div><h2>Most recorded labels</h2><p>Based on current filters</p></div></div>
+          <div id="species-chart" class="species-chart"></div>
+          <p class="chart-caveat">Sighting frequency reflects submitted records and survey effort—not estimated abundance.</p>
+        </aside>
+      </div>
+
+      <section class="panel records-panel">
+        <div class="section-heading"><div><h2>Observation records</h2><p id="record-count">Showing 0 records</p></div><button id="clear-samples" class="text-button danger-text" type="button">Clear sample data</button></div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Sighting</th><th>Observed</th><th>Coordinates</th><th>Model score</th><th>Status</th><th>Review</th></tr></thead>
+            <tbody id="records-body"></tbody>
+          </table>
+        </div>
+        <div id="records-empty" class="empty-state table-empty" hidden><strong>No sightings match these filters.</strong><p>Reset the filters or add a new field observation.</p></div>
+      </section>
+    </section>
+  </main>
+
+  <footer><span>BloomWatch · IPCV ecological monitoring prototype</span><span>Computer vision + human verification + spatial context</span></footer>
+
+  <dialog id="setup-dialog">
+    <div class="dialog-heading"><div><p class="eyebrow">MODEL CONNECTION</p><h2>Connect your trained ResNet50</h2></div><button id="close-setup" class="icon-button" type="button" aria-label="Close">×</button></div>
+    <p>The interface works independently, but real identification requires your own checkpoint and the class order used during training.</p>
+    <ol class="setup-steps">
+      <li><strong>Copy your PyTorch checkpoint and mapping</strong><code>bloomwatch/model/resnet50_flowers.pth<br>bloomwatch/model/class_mapping.json</code><span>Keras H5 checkpoints with 105 outputs are also supported; see README.md.</span></li>
+      <li><strong>Match the Kaggle preprocessing</strong><code>bloomwatch/model/model_config.json</code><span>Use model_config.example.json as the starting point. Choose resnet50 for preprocess_input, rescale for division by 255, or none when preprocessing is inside the model.</span></li>
+      <li><strong>Install model dependencies and restart</strong><code>pip install -r requirements-torch.txt</code><span>This installs PyTorch and OpenCV. The app checks that the model output count matches the mapping.</span></li>
+    </ol>
+    <div class="inline-alert warning"><strong>Important:</strong> Class order and image preprocessing must match training. A model can load successfully but still produce poor predictions if either is wrong.</div>
+    <p id="setup-error" class="setup-error"></p>
+  </dialog>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+</body>
+</html>
